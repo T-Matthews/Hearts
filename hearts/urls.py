@@ -26,10 +26,10 @@ urlpatterns = [
     path('new-game/', views.NewGameFormView.as_view(), name='new_game'),
 
     # Server Browser.
-    path('game-browser/', views.GameBrowserTemplateView.as_view(), name='server_browser'),
+    path('game-browser/', views.GameBrowserTemplateView.as_view(), name='game_browser'),
 
     # Game.
-    path('game/<str:game_id>/', views.GameView.as_view(), name='game'),
+    path('game/<str:game_id>/', views.GameTemplateView.as_view(), name='game'),
 
     # Django Admin.
     path('admin/', admin.site.urls),

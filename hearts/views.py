@@ -69,6 +69,7 @@ class GameBrowserTemplateView(TemplateView):
     """
     Render list of available games.
     """
+
     template_name = 'hearts/game-browser.html'
 
     def get_context_data(self, **kwargs) -> dict:
@@ -94,4 +95,5 @@ class GameTemplateView(TemplateView):
     """
     Main view for the actual game.
     """
+
     template_name = 'hearts/game.html'
