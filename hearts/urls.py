@@ -16,6 +16,21 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from hearts import views
+
 urlpatterns = [
+    # Home.
+    path('', views.HomeTemplateView.as_view(), name='home'),
+
+    # Create a new game.
+    path('new-game/', views.NewGameFormView.as_view(), name='new_game'),
+
+    # Server Browser.
+    path('game-browser/', views.GameBrowserTemplateView.as_view(), name='server_browser'),
+
+    # Game.
+    path('game/<str:game_id>/', views.GameView.as_view(), name='game'),
+
+    # Django Admin.
     path('admin/', admin.site.urls),
 ]

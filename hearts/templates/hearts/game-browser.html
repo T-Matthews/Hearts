@@ -1,0 +1,21 @@
+{% if games %}
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Deal</th>
+            <th>Players</th>
+            <th>Difficulty</th>
+        </tr>
+        {% for game in games %}
+            <tr>
+                <td><a href="/game/{{ game.id }}/">{{ game.id }}</a></td>
+                <td>{{ game.deal }}</td>
+                <td>{{ game.players }}</td>
+                <td>{{ game.difficulty }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <p>No games are available.</p>
+    <button>Start a new game</button>
+{% endif %}
