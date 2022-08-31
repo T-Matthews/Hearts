@@ -1,6 +1,7 @@
 from typing import Any, Optional
 from uuid import uuid4
 
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 
@@ -40,7 +41,7 @@ class NewGameFormView(FormView):
         """
         return reverse('game', kwargs={'game_id': self.game.id})
 
-    def form_valid(self, form: NewGameForm) -> None:
+    def form_valid(self, form: NewGameForm) -> HttpResponseRedirect:
         player = self.get_or_create_player(form.name)
         self.create_new_game(player)
         return super().form_valid(form)
