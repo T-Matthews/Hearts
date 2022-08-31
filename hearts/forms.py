@@ -1,14 +1,12 @@
 from django import forms
 
 
-class NewGameForm(forms.Form):
+class NewPlayerForm(forms.Form):
     """
-    Form to submit when creating a new game.
+    Form to submit when creating a new player.
 
-    We really only care about getting the user's name and once we add some
-    kind of client-side persistence then we won't even need this.
-
-    We should consider adding a difficulty option if we can (easy/medium/hard).
+    We really only care about getting the user's name. In the future this could
+    be an actual login.
     """
 
     # Name to attach to the user starting the game.

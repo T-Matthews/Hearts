@@ -22,13 +22,14 @@ urlpatterns = [
     # Home.
     path('', views.HomeTemplateView.as_view(), name='home'),
 
-    # Create a new game.
-    path('new-game/', views.NewGameFormView.as_view(), name='new_game'),
+    # Create a new player.
+    path('new-player/', views.NewPlayerFormView.as_view(), name='new_player'),
 
     # Server Browser.
     path('game-browser/', views.GameBrowserTemplateView.as_view(), name='game_browser'),
 
     # Game.
+    path('game/', views.NewGameView.as_view(), name='new_game'),
     path('game/<str:game_id>/', views.GameTemplateView.as_view(), name='game'),
 
     # Django Admin.

@@ -1,11 +1,12 @@
-from typing import Any, Optional
 from uuid import uuid4
 
 from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
+from django.views import View
 from django.views.generic import FormView, TemplateView
 
-from hearts.forms import NewGameForm
+from hearts.forms import NewPlayerForm
+from hearts.models import Game, Player
 
 
 class HomeTemplateView(TemplateView):
@@ -18,52 +19,27 @@ class HomeTemplateView(TemplateView):
     template_name = 'hearts/home.html'
 
 
-class NewGameFormView(FormView):
+class NewPlayerFormView(FormView):
     """
-    Form for creating a new game.
+    Form for creating a new Player.
 
-    A game is created now by first creating the player then creating the game
-    and linking the player + 3 bots. For now the creation is stubbed.
+    A Player must be created before anything else can happen. A player is
+    identified through a browser cookie that contains the player id.
     """
 
-    template_name = 'hearts/new-game.html'
-    form_class = NewGameForm
+    template_name = 'hearts/new-player.html'
+    form_class = NewPlayerForm
+    success_url = reverse_lazy('home')
 
-    # This will be set in the `create_new_game` function when ready.
-    game: Optional[Any]
-
-    def get_success_url(self) -> str:
-        """
-        Build the URL to redirect to.
-
-        This cannot be defined statically as we need to template the URL with
-        the ID of the game we just created.
-        """
-        return reverse('game', kwargs={'game_id': self.game.id})
-
-    def form_valid(self, form: NewGameForm) -> HttpResponseRedirect:
-        player = self.get_or_create_player(form.name)
-        self.create_new_game(player)
+    def form_valid(self, form: NewPlayerForm) -> HttpResponseRedirect:
+        player = self.create_player(form.name)
+        # TODO: Set cookie with player id.
         return super().form_valid(form)
 
-    def get_or_create_player(self, name: str) -> Any:
+    def create_player(self, name: str) -> Player:
         """
-        Get or create a Player who is starting this game.
-
-        For now, it will always create a player with the given name. Once we
-        can identify a player on the client side, we can pass the player id and
-        fetch the Player from the database if given.
+        Create a new Player.
         """
-
-    def create_new_game(self, player: Any) -> None:
-        """
-        Create a new game.
-
-        Link the real player to the game then link 3 bots. The player will be
-        redirected to this game.
-        """
-        # Set game on class instance for access in other methods.
-        self.game = None
 
 
 class GameBrowserTemplateView(TemplateView):
@@ -83,13 +59,33 @@ class GameBrowserTemplateView(TemplateView):
         context = super().get_context_data(**kwargs)
         context.update({
             'games': [
-                {'id': uuid4(), 'deal': 3, 'players': 1, 'difficulty': 'hard'},
-                {'id': uuid4(), 'deal': 1, 'players': 4, 'difficulty': 'easy'},
-                {'id': uuid4(), 'deal': 9, 'players': 2, 'difficulty': 'hard'},
-                {'id': uuid4(), 'deal': 4, 'players': 0, 'difficulty': 'medium'},
+                {'id': str(uuid4())[:-8], 'seats': '1 / 4', 'deal': 3, 'time_elapsed': '<1 min'},
+                {'id': str(uuid4())[:-8], 'seats': 'FULL', 'deal': 1, 'time_elapsed': '17 min'},
             ]
         })
         return context
+
+
+class NewGameView(View):
+    """
+    View to handle creation of games.
+    """
+
+    def get(self, request) -> HttpResponseRedirect:
+        """
+        Handle simple GET request which will create a game and redirect to it.
+        """
+        game = self.create_game()
+        return HttpResponseRedirect(
+            reverse('game', kwargs={'game_id': game.id})
+        )
+
+    def create_game(self) -> Game:
+        """
+        Create a new game and return it.
+
+        This should use the "logged in" user as player 1.
+        """
 
 
 class GameTemplateView(TemplateView):

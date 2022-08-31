@@ -1,21 +1,22 @@
 {% if games %}
     <table>
         <tr>
-            <th>ID</th>
+            <th></th>
+            <th>Game ID</th>
+            <th>Seats</th>
             <th>Deal</th>
-            <th>Players</th>
-            <th>Difficulty</th>
+            <th>Time Elapsed</th>
         </tr>
         {% for game in games %}
             <tr>
-                <td><a href="/game/{{ game.id }}/">{{ game.id }}</a></td>
+                <td><a href="/game/{{ game.id }}/">JOIN</a></td>
+                <td>{{ game.id }}</td>
+                <td>{{ game.seats }}</td>
                 <td>{{ game.deal }}</td>
-                <td>{{ game.players }}</td>
-                <td>{{ game.difficulty }}</td>
+                <td>{{ game.elapsed_time }}</td>
             </tr>
         {% endfor %}
     </table>
 {% else %}
     <p>No games are available.</p>
-    <button>Start a new game</button>
 {% endif %}
