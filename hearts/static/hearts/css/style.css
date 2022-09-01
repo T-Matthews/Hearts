@@ -1,2 +1,163 @@
 
 /* Customize CSS below */
+
+#content {
+    height: 100%;
+    width: 100%;
+    background: #4d8671;
+}
+
+#game-area {
+    height: 100vh;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    grid-column-gap: 10px;
+    grid-template-rows: 200px 3fr 2fr;
+    grid-row-gap: 10px;
+}
+
+/* Center Trick Display */
+
+#trick {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 2;
+    grid-row-end: 3;
+    display: grid;
+    grid-template-columns: 150px 150px 150px;
+    grid-column-gap: 10px;
+    grid-template-rows: 210px 210px;
+    grid-row-gap: 10px;
+    place-items: center;
+    justify-content: center;
+    align-content: center;
+}
+
+div[id^="trick-card-"] img {
+    width: 150px;
+}
+#trick-card-bottom {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+#trick-card-left {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 1;
+    grid-row-end: 3;
+}
+#trick-card-top {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}
+#trick-card-right {
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 1;
+    grid-row-end: 3;
+}
+
+.trick-card-placeholder {
+    height: 200px;
+    width: 140px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+
+}
+
+
+/* Player Display */
+
+#player-bottom {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 3;
+    grid-row-end: 4;
+}
+#player-left {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+#player-top {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}
+#player-right {
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+
+/* Player Hands Display */
+
+#player-bottom .hand {
+    margin-left: auto;
+    margin-right: auto;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 50px);
+    justify-content: center;
+    justify-items: center;
+    align-content: center;
+}
+#player-left .hand {
+    height: 100%;
+    display: grid;
+    grid-auto-rows: 30px;
+    align-items: center;
+    align-content: center;
+    justify-content: left;
+    padding-left: 20px;
+}
+#player-top .hand {
+    margin-left: auto;
+    margin-right: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit,  30px);
+    justify-content: center;
+    justify-items: center;
+}
+#player-right .hand {
+    height: 100%;
+    display: grid;
+    grid-auto-rows: 30px;
+    align-items: center;
+    align-content: center;
+    justify-content: right;
+    padding-right: 20px;
+}
+
+.player-card {
+    width: 150px;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.player-card:hover {
+    margin-top: -20px;
+}
+
+.opposing-player-card {
+    width: 90px;
+}
+
+#player-left .opposing-player-card {
+    transform: rotate(90deg);
+}
+#player-right .opposing-player-card {
+    transform: rotate(-90deg);
+}
+
+

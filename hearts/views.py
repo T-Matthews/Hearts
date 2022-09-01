@@ -112,3 +112,62 @@ class GameTemplateView(TemplateView):
     """
 
     template_name = 'hearts/game.html'
+
+    def get_context_data(self, **kwargs) -> dict:
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'player_left': {
+                'cards': [{}] * 7,
+            },
+            'player_top': {
+                'cards': [{}] * 6,
+            },
+            'player_right': {
+                'cards': [{}] * 6,
+            },
+            'player_bottom': {
+                'cards': [
+                    {
+                        'suit': 'c',
+                        'value': 6,
+                    },
+                    {
+                        'suit': 'h',
+                        'value': 4,
+                    },
+                    {
+                        'suit': 'h',
+                        'value': 5,
+                    },
+                    {
+                        'suit': 'd',
+                        'value': 13,
+                    },
+                    {
+                        'suit': 'd',
+                        'value': 1,
+                    },
+                    {
+                        'suit': 's',
+                        'value': 12,
+                    },
+                    {
+                        'suit': 'h',
+                        'value': 2,
+                    },
+                ],
+            },
+            'trick': {
+                'bottom': None,
+                'left': None,
+                'top': {
+                    'suit': 'c',
+                    'value': 8,
+                },
+                'right': {
+                    'suit': 'c',
+                    'value': 11,
+                },
+            },
+        })
+        return context
