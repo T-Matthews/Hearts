@@ -1,6 +1,55 @@
 {% extends 'hearts/base.html' %}
 
+{% load static %}
+
 {% block content %}
 
+<div id="game-area">
+
+    <div id="trick">
+        {% for position, card in trick.items %}
+            <div id="trick-card-{{ position }}">
+                {% if card %}
+                    <img class="trick-card" src="{% get_static_prefix %}hearts/cards/{{ card.value }}{{ card.suit|upper }}.svg">
+                {% else %}
+                    <div class="trick-card-placeholder"></div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="player-top">
+        <div class="hand">
+        {% for card in player_top.cards  %}
+            <img class="opposing-player-card" src="{% get_static_prefix %}hearts/cards/card-back.svg">
+        {% endfor %}
+        </div>
+    </div>
+
+    <div id="player-left">
+        <div class="hand">
+        {% for card in player_left.cards  %}
+            <img class="opposing-player-card" src="{% get_static_prefix %}hearts/cards/card-back.svg">
+        {% endfor %}
+        </div>
+    </div>
+
+    <div id="player-right">
+        <div class="hand">
+        {% for card in player_right.cards  %}
+            <img class="opposing-player-card" src="{% get_static_prefix %}hearts/cards/card-back.svg">
+        {% endfor %}
+        </div>
+    </div>
+
+    <div id="player-bottom">
+        <div class="hand">
+        {% for card in player_bottom.cards  %}
+            <img class="player-card" src="{% get_static_prefix %}hearts/cards/{{ card.value }}{{ card.suit|upper }}.svg">
+        {% endfor %}
+        </div>
+    </div>
+
+</div>
 
 {% endblock %}

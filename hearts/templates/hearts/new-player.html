@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<form method="post">
+<form method="post" id="new-player">
     {% csrf_token %}
     {{ form }}
     <input type="submit" value="Go">
