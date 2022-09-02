@@ -1,5 +1,10 @@
-Welcome, {{ player.name|title }}!
-<div>
+{% extends 'hearts/base.html' %}
+
+{% block content %}
+
+<div id="home-buttons">
     <a href="/game/">New Game</a>
     <a href="/game-browser/">Browse Games</a>
 </div>
+
+{% endblock %}

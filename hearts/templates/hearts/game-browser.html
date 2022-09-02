@@ -1,5 +1,9 @@
+{% extends 'hearts/base.html' %}
+
+{% block content %}
+
 {% if games %}
-    <table>
+    <table id="game-browser">
         <tr>
             <th></th>
             <th>Game ID</th>
@@ -9,14 +13,16 @@
         </tr>
         {% for game in games %}
             <tr>
-                <td><a href="/game/{{ game.id }}/">JOIN</a></td>
+                <td><a class="join-game" href="/game/{{ game.id }}/">JOIN</a></td>
                 <td>{{ game.id }}</td>
                 <td>{{ game.seats }}</td>
                 <td>{{ game.deal }}</td>
-                <td>{{ game.elapsed_time }}</td>
+                <td>{{ game.time_elapsed }}</td>
             </tr>
         {% endfor %}
     </table>
 {% else %}
     <p>No games are available.</p>
 {% endif %}
+
+{% endblock %}

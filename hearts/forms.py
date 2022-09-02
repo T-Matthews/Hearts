@@ -10,4 +10,8 @@ class NewPlayerForm(forms.Form):
     """
 
     # Name to attach to the user starting the game.
-    name = forms.CharField(label='Name', max_length=100)
+    name = forms.CharField(
+        label='name',
+        max_length=100,
+        widget=forms.TextInput(attrs={'placeholder': 'Enter your name'}),
+    )

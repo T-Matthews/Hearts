@@ -1,0 +1,331 @@
+
+/* Customize CSS below */
+
+* {box-sizing: inherit;}
+body {box-sizing: border-box; font-family: sans-serif;}
+
+/*****************/
+/* Base Template */
+/*****************/
+
+#content {
+    height: 100vh;
+    width: 100%;
+    background: #4d8671;
+    position: absolute;
+}
+
+
+/**************/
+/* New Player */
+/**************/
+
+#new-player {
+    position: relative;
+    background: rgba(0, 0, 0, 0.2);
+    width: 400px;
+    padding: 30px;
+    text-align: center;
+    margin: 0 auto;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-radius: 5px;
+    gap: 30px;
+}
+
+#new-player label {display: none;}
+
+#new-player input {
+    border: none;
+    display: block;
+    width: 100%;
+    border-radius: 5px;
+    transition: 0.2s;
+    padding: 5px 10px;
+    text-align: center;
+}
+
+#new-player input[type="text"] {
+    font-size: 20px;
+    padding: 15px 0;
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(0, 0, 0, 0.6);
+}
+
+#new-player input[type="text"]::placeholder {
+    color: rgba(0, 0, 0, 0.2);
+}
+
+#new-player input[type="submit"] {
+    color: #4d8671;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    padding: 30px;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+#new-player input[type="submit"]:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+
+/********/
+/* Home */
+/********/
+
+#home-buttons {
+    position: relative;
+    background: rgba(0, 0, 0, 0.2);
+    width: 400px;
+    padding: 30px;
+    text-align: center;
+    margin: 0 auto;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-radius: 5px;
+    gap: 30px;
+}
+
+#home-buttons a {
+    display: block;
+    text-decoration: none;
+    width: 100%;
+    padding: 30px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    text-transform: uppercase;
+    font-size: 14px;
+    color: #4d8671;
+    transition: 0.2s;
+    letter-spacing: 4px;
+}
+
+#home-buttons a:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+
+/****************/
+/* Game Browser */
+/****************/
+
+#game-browser {
+    position: relative;
+    display: block;
+    background: rgba(0,0,0,0.2);
+    margin: 100px 30px 30px;
+    border-radius: 5px;
+    border-collapse: collapse;
+    width: calc(100% - 60px);
+    height: calc(100% - 130px);
+    color: rgba(0, 0, 0, 0.7);
+}
+#game-browser th, #game-browser td {
+    padding: 30px;
+    white-space: nowrap;
+}
+#game-browser td {
+    text-align: center;
+}
+#game-browser td:last-of-type {
+    text-align: right;
+}
+#game-browser th {
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-align: left;
+    padding: 20px 30px 10px 30px;
+    border-bottom: 2px solid rgba(0,0,0,0.2);
+}
+#game-browser th:last-of-type {
+    width: 100%;
+    text-align: right;
+}
+#game-browser tr {transition: 0.2s;}
+#game-browser tr:nth-of-type(even) {
+    background: rgba(0,0,0,0.1);
+}
+#game-browser tr:not(:first-of-type):hover {
+    background: rgba(0,0,0,0.2);
+}
+
+#game-browser .join-game {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    color: #4d8671;
+    transition: 0.2s;
+    letter-spacing: 4px;
+}
+#game-browser .join-game:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/********/
+/* Game */
+/********/
+
+#game-area {
+    height: 100vh;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    grid-column-gap: 10px;
+    grid-template-rows: 200px 3fr 2fr;
+    grid-row-gap: 10px;
+}
+
+/* Center Trick Display */
+
+#trick {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 2;
+    grid-row-end: 3;
+    display: grid;
+    grid-template-columns: 150px 150px 150px;
+    grid-column-gap: 10px;
+    grid-template-rows: 210px 210px;
+    grid-row-gap: 10px;
+    place-items: center;
+    justify-content: center;
+    align-content: center;
+}
+
+div[id^="trick-card-"] img {
+    width: 150px;
+}
+#trick-card-bottom {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+#trick-card-left {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 1;
+    grid-row-end: 3;
+}
+#trick-card-top {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}
+#trick-card-right {
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 1;
+    grid-row-end: 3;
+}
+
+.trick-card-placeholder {
+    height: 200px;
+    width: 140px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+
+}
+
+
+/* Player Display */
+
+#player-bottom {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 3;
+    grid-row-end: 4;
+}
+#player-left {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+#player-top {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}
+#player-right {
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+
+/* Player Hands Display */
+
+#player-bottom .hand {
+    margin-left: auto;
+    margin-right: auto;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 50px);
+    justify-content: center;
+    justify-items: center;
+    align-content: center;
+}
+#player-left .hand {
+    height: 100%;
+    display: grid;
+    grid-auto-rows: 30px;
+    align-items: center;
+    align-content: center;
+    justify-content: left;
+    padding-left: 20px;
+}
+#player-top .hand {
+    margin-left: auto;
+    margin-right: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit,  30px);
+    justify-content: center;
+    justify-items: center;
+}
+#player-right .hand {
+    height: 100%;
+    display: grid;
+    grid-auto-rows: 30px;
+    align-items: center;
+    align-content: center;
+    justify-content: right;
+    padding-right: 20px;
+}
+
+.player-card {
+    width: 150px;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.player-card:hover {
+    margin-top: -20px;
+}
+
+.opposing-player-card {
+    width: 90px;
+}
+
+#player-left .opposing-player-card {
+    transform: rotate(90deg);
+}
+#player-right .opposing-player-card {
+    transform: rotate(-90deg);
+}
+
+
