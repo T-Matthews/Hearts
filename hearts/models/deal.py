@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.db import models
 
 
@@ -7,7 +9,7 @@ class Deal(models.Model):
 
     A game has many deals. A Deal has many tricks.
     """
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid4)
 
     game = models.ForeignKey(
         'hearts.Game',
