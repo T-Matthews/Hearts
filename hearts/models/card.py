@@ -48,3 +48,16 @@ class Card(models.Model):
     value = models.IntegerField()
 
     created_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def sort_key(self) -> int:
+        base_value = {
+            self.Suit.HEARTS: 100,
+            self.Suit.SPADES: 200,
+            self.Suit.DIAMONDS: 300,
+            self.Suit.CLUBS: 400,
+        }[self.suit]
+        sort_key = base_value + self.value
+        if self.value == 1:
+            sort_key += 13
+        return sort_key

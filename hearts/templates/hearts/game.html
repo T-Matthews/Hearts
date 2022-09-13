@@ -4,52 +4,168 @@
 
 {% block content %}
 
+<div id="start-game"></div>
+
 <div id="game-area">
 
+    <div id="current-turn-token"></div>
+
     <div id="trick">
-        {% for position, card in trick.items %}
-            <div id="trick-card-{{ position }}">
-                {% if card %}
-                    <img class="trick-card" src="{% get_static_prefix %}hearts/cards/{{ card.value }}{{ card.suit|upper }}.svg">
-                {% else %}
-                    <div class="trick-card-placeholder"></div>
-                {% endif %}
-            </div>
-        {% endfor %}
+        <div id="trick-card-bottom"><div class="trick-card-placeholder"></div></div>
+        <div id="trick-card-left"><div class="trick-card-placeholder"></div></div>
+        <div id="trick-card-top"><div class="trick-card-placeholder"></div></div>
+        <div id="trick-card-right"><div class="trick-card-placeholder"></div></div>
     </div>
 
     <div id="player-top">
-        <div class="hand">
-        {% for card in player_top.cards  %}
-            <img class="opposing-player-card" src="{% get_static_prefix %}hearts/cards/card-back.svg">
-        {% endfor %}
-        </div>
+        <div class="hand"></div>
     </div>
 
     <div id="player-left">
-        <div class="hand">
-        {% for card in player_left.cards  %}
-            <img class="opposing-player-card" src="{% get_static_prefix %}hearts/cards/card-back.svg">
-        {% endfor %}
-        </div>
+        <div class="hand"></div>
     </div>
 
     <div id="player-right">
-        <div class="hand">
-        {% for card in player_right.cards  %}
-            <img class="opposing-player-card" src="{% get_static_prefix %}hearts/cards/card-back.svg">
-        {% endfor %}
-        </div>
+        <div class="hand"></div>
     </div>
 
     <div id="player-bottom">
-        <div class="hand">
-        {% for card in player_bottom.cards  %}
-            <img class="player-card" src="{% get_static_prefix %}hearts/cards/{{ card.value }}{{ card.suit|upper }}.svg">
-        {% endfor %}
-        </div>
+        <div class="hand"></div>
     </div>
 
 </div>
+
+<script type="application/javascript">
+    const loader = document.getElementById('loader');
+
+    const playerBottom = document.getElementById('player-bottom');
+    const playerBottomHand = playerBottom.getElementsByClassName('hand')[0];
+    const playerLeft = document.getElementById('player-left');
+    const playerLeftHand = playerLeft.getElementsByClassName('hand')[0];
+    const playerTop = document.getElementById('player-top');
+    const playerTopHand = playerTop.getElementsByClassName('hand')[0];
+    const playerRight = document.getElementById('player-right');
+    const playerRightHand = playerRight.getElementsByClassName('hand')[0];
+    const currentTurnToken = document.getElementById('current-turn-token');
+
+    /* Polling */
+    const handleGameStateUpdate = (gameState) => {
+        const isObserver = gameState.is_observer;
+
+        // Update Trick.
+        Object.entries(gameState.trick).forEach(([trickPos, trickVal]) => {
+            const trickCard = document.getElementById(`trick-card-${trickPos}`);
+            if (trickVal) {
+                trickCard.innerHTML = `<img class="trick-card" src="{% get_static_prefix %}hearts/cards/${trickVal.value}${trickVal.suit.toUpperCase()}.svg">`
+            } else {
+                trickCard.innerHTML = '<div class="trick-card-placeholder"></div>'
+            }
+        })
+
+        // Update player hand
+        if (playerBottomHand.childNodes.length !== gameState.player_bottom.hand.length) {
+            playerBottomHand.innerHTML = gameState.player_bottom.hand.map((card) => {
+                return `<img data-id="${card.id}" class="player-card" src="{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg">`;
+            }).join('');
+        }
+
+        // Update opponent hands
+        if (playerLeftHand.childNodes.length !== gameState.player_left.hand.length) {
+            playerLeftHand.innerHTML = gameState.player_left.hand.map((card) => {
+                let src = "{% get_static_prefix %}hearts/cards/card-back.svg"
+                if (isObserver) {
+                    src = `"{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg"`
+                }
+                    return `<img class="opposing-player-card" src=${src}>`
+            }).join('');
+        }
+        if (playerTopHand.childNodes.length !== gameState.player_top.hand.length) {
+            playerTopHand.innerHTML = gameState.player_top.hand.map((card) => {
+                let src = "{% get_static_prefix %}hearts/cards/card-back.svg"
+                if (isObserver) {
+                    src = `"{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg"`
+                }
+                    return `<img class="opposing-player-card" src=${src}>`
+            }).join('');
+        }
+        if (playerRightHand.childNodes.length !== gameState.player_right.hand.length) {
+            playerRightHand.innerHTML = gameState.player_right.hand.map((card) => {
+                let src = "{% get_static_prefix %}hearts/cards/card-back.svg"
+                if (isObserver) {
+                    src = `"{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg"`
+                }
+                    return `<img class="opposing-player-card" src=${src}>`
+            }).join('');
+        }
+
+        if (!currentTurnToken.classList.contains(gameState.current_turn_relative_position)) {
+            currentTurnToken.classList.remove(...currentTurnToken.classList);
+            currentTurnToken.classList.add(gameState.current_turn_relative_position);
+        }
+
+        postGameStateUpdate();
+    };
+
+    const postGameStateUpdate = () => {
+        const playerCards = document.querySelectorAll('img.player-card');
+        playerCards.forEach((card) => {
+            card.onclick = () => {
+                let cardId = card.getAttribute('data-id');
+                fetch('/game/{{ game_id }}/', {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action_type: 'play-card',
+                        card_id: cardId,
+                    }),
+                }).then(() => {
+                    updateGameState()
+                })
+            }
+        })
+    };
+
+    const updateGameState = () => {
+        loader.classList.remove('hide');
+        fetch('/game/{{ game_id }}/state', {
+            method: 'GET',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then((response) => {
+            return response.json()
+        }).then((data) => {
+            handleGameStateUpdate(data);
+            window.setTimeout(() => {
+                loader.classList.add('hide');
+            }, 300);
+        });
+    }
+
+    // Update the game state on page load.
+    updateGameState();
+
+    // Setup live updates via SSE. Fallback to polling.
+    if (typeof(EventSource) !== "undefined") {
+        const source = new EventSource('/game/{{ game_id }}/state/stream/');
+        source.onmessage = (event) => {
+            console.log('Received SSE for game state');
+            handleGameStateUpdate(JSON.parse(event.data));
+        };
+    } else {
+        // If SSE is not supported, poll for game state.
+        window.setInterval(() => {
+            console.log('Polling for game state');
+            updateGameState();
+        }, 500);
+    }
+
+    /* Play Cards */
+
+</script>
 
 {% endblock %}

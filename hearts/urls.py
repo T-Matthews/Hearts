@@ -31,6 +31,8 @@ urlpatterns = [
     # Game.
     path('game/', views.NewGameView.as_view(), name='new_game'),
     path('game/<str:game_id>/', views.GameTemplateView.as_view(), name='game'),
+    path('game/<str:game_id>/state/', views.GameStateView.as_view(), name='game_state'),
+    path('game/<str:game_id>/state/stream/', views.stream_game_state, name='game_state_stream'),
 
     # Django Admin.
     path('admin/', admin.site.urls),
