@@ -330,9 +330,16 @@ div[id^="trick-card-"] img {
 .player-card.card-ineligible {
     filter: brightness(50%);
 }
+.player-card.card-to-pass {
+    filter: brightness(80%);
+    margin-top: -40px;
+}
 
 .player-card:hover {
     margin-top: -20px;
+}
+.player-card.card-to-pass:hover {
+    margin-top: -40px;
 }
 
 .opposing-player-card {
@@ -390,3 +397,33 @@ div[id^="trick-card-"] img {
     border-radius: 30px 0 0 30px;
 }
 
+/* Action Button */
+#action-button {
+    grid-column-start: 1;
+    grid-column-end: 4;
+    grid-row-start: 1;
+    grid-row-end: 4;
+    background: rgba(0, 0, 0, 0.5);
+    transition: 0.2s;
+    height: 200px;
+    width: 200px;
+    border-radius: 100px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #4d8671;
+    z-index: 2;
+}
+
+#action-button:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+#action-button.hide {
+    display: none;
+}

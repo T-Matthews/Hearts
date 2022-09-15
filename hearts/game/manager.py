@@ -1,8 +1,11 @@
+import logging
 import random
 import time
 from typing import Optional
 
 from hearts.models import Card, Deal, Game, Player, Trick
+
+logger = logging.getLogger('django')
 
 
 class GameManager:
@@ -49,9 +52,11 @@ class GameManager:
             player_3=bots[1],
             player_4=bots[2],
         )
+        logger.info('Created new game')
+
         return game
 
-    def play_trick(self) -> None:
+    def play(self) -> None:
         """
         Play through a trick, stopping for player input.
 
@@ -67,6 +72,15 @@ class GameManager:
         really buggy though and something freezes up at that point. Need to
         investigate.
         """
+        logger.info('Starting game play')
+        # If the pass has not happened yet, try to trigger it. Else return
+        # and wait for human players to pass cards
+        if not self.current_deal.has_passed:
+            self.pass_cards()
+            if not self.current_deal.has_passed:
+                logger.info('Exiting play, waiting for pass')
+                return
+
         trick = self.current_trick
 
         # Continuously loop until the trick has 4 cards associated with it.
@@ -85,10 +99,12 @@ class GameManager:
             # turn. We should eventually add some kind of timer to this and
             # kick a human player off if inactive for too long.
             if not current_turn_player.bot:
+                logger.info('Awaiting human player card')
                 return
 
             # Make the bot play their turn.
             card = self.get_bot_card_to_play(bot=current_turn_player)
+            logger.info('Playing bot card')
             self.play_card(card)
 
         # At this point the trick has just had the fourth card played.
@@ -102,9 +118,10 @@ class GameManager:
             key=lambda x: x.value if x.value > 1 else 99,
             reverse=True
         )
-        winning_card = cards_in_suit_played[0]
-        trick.winning_player = winning_card.player
+        winner = cards_in_suit_played[0].player
+        trick.winning_player = winner
         trick.save()
+        logger.info(f'Player {self.game.get_player_index(winner.id)} takes the trick')
 
         # Sleep for a second to give the human players a chance to see how the
         # trick played out.
@@ -114,16 +131,17 @@ class GameManager:
         # and restart this entire method.
         if Trick.objects.filter(deal=self.current_deal).count() < 13:
             self._current_trick = self.new_trick()
-            self.play_trick()
+            self.play()
 
         # If the last trick just finished then the game is over and a new deal
         # should be created followed by a new trick. For some reason, this
         # doesn't work as expected and sometimes freezes here. Need to dig
         # further to figure out what is happening.
         else:
+            logger.info('Deal over, starting next deal')
             self._current_deal = self.new_deal()
             self._current_trick = self.new_trick()
-            self.play_trick()
+            self.play()
 
     def get_bot_card_to_play(self, bot: Player) -> Card:
         """
@@ -176,6 +194,130 @@ class GameManager:
         # Else just pick a card at random.
         return random.choice(eligible_cards)
 
+    def set_cards_to_pass(self, cards: list[Card]) -> None:
+        """
+        Mark which cards a player is going to pass.
+
+        Because passing cards is asynchronous unlike playing cards which is
+        synchronous, we must split passing into two steps:
+        1. Each player signifies which cards they are going to pass.
+        2. We pass all cards at the same time.
+
+        This method is the first step and the `pass_cards` method is the second
+        step.
+        """
+        # Validate the current deal hasn't passed yet.
+        if self.current_deal.has_passed:
+            return
+
+        # Check if passing is necessary. On every 4th round we skip passing.
+        direction = self.get_pass_direction()
+        if direction is None:
+            self.current_deal.has_passed = True
+            self.current_deal.save()
+            return
+
+        # Validate the correct number of cards are getting passed.
+        if len(cards) != 3:
+            return
+
+        for card in cards:
+            card.to_pass = True
+            card.save()
+
+    def pass_cards(self) -> None:
+        """
+        Pass cards to adjacent players.
+
+        This happens at the start of the round. Right now bots will pass three
+        random cards.
+        """
+        deal = self.current_deal
+        direction = self.get_pass_direction()
+        if direction is None:
+            deal.has_passed = True
+            deal.save()
+            logger.info('Skipping passing on 4th deal')
+            return
+
+        for player in self.game.players:
+            cards_to_pass = Card.objects.filter(
+                player=player,
+                deal=deal,
+                to_pass=True,
+            ).count()
+            if cards_to_pass != 3:
+                if not player.bot:
+                    logger.info(f'Waiting for player {self.game.get_player_index(player.id)} to pass')
+                    return
+                cards = list(Card.objects.filter(
+                    player=player,
+                    deal=deal,
+                    to_pass=False,
+                ).order_by('?')[:3])
+                for card in cards:
+                    card.to_pass = True
+                    card.save()
+
+        pass_map = {
+            self.game.player_1_id: {
+                'left': self.game.player_2,
+                'right': self.game.player_4,
+                'top': self.game.player_3,
+            },
+            self.game.player_2_id: {
+                'left': self.game.player_3,
+                'right': self.game.player_1,
+                'top': self.game.player_4,
+            },
+            self.game.player_3_id: {
+                'left': self.game.player_4,
+                'right': self.game.player_2,
+                'top': self.game.player_1,
+            },
+            self.game.player_4_id: {
+                'left': self.game.player_1,
+                'right': self.game.player_3,
+                'top': self.game.player_2,
+            },
+        }
+
+        for player in self.game.players:
+            receiving_player = pass_map[player.id][direction]
+            Card.objects.filter(
+                deal=self.current_deal,
+                player=player,
+                to_pass=True,
+            ).update(
+                player=receiving_player,
+                to_pass=False,
+            )
+
+        deal.has_passed = True
+        deal.save()
+        logger.info('Passing complete')
+
+    def get_pass_direction(self) -> Optional[str]:
+        """
+        Determine what direction players are passing.
+
+        Passing goes like this:
+        - First hand -> Pass left
+        - Second hand -> Pass right
+        - Third hand -> Pass forward
+        - Fourth hand -> Don't pass
+        - Repeat sequence...
+        """
+        deal_number = Deal.objects.filter(
+            game=self.game,
+        ).count()
+        return [
+            'left',
+            'right',
+            'top',
+            None,
+        ][(deal_number - 1) % 4]
+
     def play_card(self, card: Card) -> None:
         """
         Play a card from a hand to the current trick.
@@ -207,6 +349,8 @@ class GameManager:
         # "Play" the card.
         card.trick = trick
         card.save()
+
+        logger.info(f'Player {self.game.get_player_index(card.player_id)} plays card {card.value}{card.suit}')
 
         # Sleep for a bit otherwise the bots move too fast.
         time.sleep(0.6)
@@ -341,6 +485,21 @@ class GameManager:
             'is_observer': is_observer,
         }
 
+        # Determine next action required by player.
+        if not self.current_deal:
+            action = 'deal-cards'
+        elif not self.current_deal.has_passed:
+            action = 'pass-cards'
+        else:
+            action = 'play-card'
+        game_state['action'] = action
+
+        # Check if passing has occurred already.
+        if self.current_deal:
+            game_state['has_passed'] = self.current_deal.has_passed
+        else:
+            game_state['has_passed'] = None
+
         # Determine the players absolute and relative positions.
         players = self.game.players
         player_index = players.index(player)
@@ -361,20 +520,22 @@ class GameManager:
         for absolute_pos, relative_pos in player_position_map.items():
             # Get the cards currently in the players hand.
             current_player = getattr(self.game, f'player_{absolute_pos}')
-            cards = Card.objects.filter(
-                player=current_player,
-                deal=self.current_deal,
-                trick__isnull=True,
-            )
-            cards = sorted(list(cards), key=lambda x: x.sort_key)
-            hand = [
-                {
-                    'id': str(card.id),
-                    'suit': card.suit,
-                    'value': card.value,
-                }
-                for card in cards
-            ]
+            hand = []
+            if self.current_deal:
+                cards = Card.objects.filter(
+                    player=current_player,
+                    deal=self.current_deal,
+                    trick__isnull=True,
+                )
+                cards = sorted(list(cards), key=lambda x: x.sort_key)
+                hand = [
+                    {
+                        'id': str(card.id),
+                        'suit': card.suit,
+                        'value': card.value,
+                    }
+                    for card in cards
+                ]
 
             # Update the top-level current turn value if it's this players turn.
             is_turn = current_player == current_turn
@@ -392,17 +553,18 @@ class GameManager:
 
             # Lastly, update the trick with this player's card if they've
             # played on this trick already.
-            card_played = Card.objects.filter(
-                trick=self.current_trick,
-                player=current_player,
-            ).last()
-            card = None
-            if card_played:
-                card = {
-                    'suit': card_played.suit,
-                    'value': card_played.value,
-                }
-            game_state['trick'][relative_pos] = card
+            if self.current_trick:
+                card_played = Card.objects.filter(
+                    trick=self.current_trick,
+                    player=current_player,
+                ).last()
+                card = None
+                if card_played:
+                    card = {
+                        'suit': card_played.suit,
+                        'value': card_played.value,
+                    }
+                game_state['trick'][relative_pos] = card
 
         return game_state
 
@@ -418,6 +580,7 @@ class GameManager:
         """
         # Create Deal.
         deal = Deal.objects.create(game=self.game)
+        logger.info('Created new Deal')
 
         # Create new deck of Cards.
         cards = []
@@ -439,6 +602,7 @@ class GameManager:
             card.player = players[index % len(players)]
             card.save()
 
+        logger.info('Shuffled and dealt')
         return deal
 
     def new_trick(self) -> Optional[Trick]:
@@ -449,14 +613,13 @@ class GameManager:
              Newly created Trick object or None if the Trick wasn't created for
                 some reason.
         """
-        # I'm not sure why but sometimes this function gets called before the
-        # current trick is over. In this case we absolutely do not want to
-        # create a new trick. This hack will prevent us from ever creating a
-        # new Trick if the last Trick doesn't have a winner. Need to
-        # investigate further and come up with a better solution.
+        deal = self.current_deal
+        if not deal:
+            return
+
         try:
             latest_trick = Trick.objects.filter(
-                deal=self.current_deal
+                deal=deal,
             ).latest('created_at')
         except Trick.DoesNotExist:
             pass
@@ -465,9 +628,9 @@ class GameManager:
                 return
 
         # Create and return new Trick.
-        return Trick.objects.create(
-            deal=self.current_deal,
-        )
+        trick = Trick.objects.create(deal=deal)
+        logger.info('Created new trick')
+        return trick
 
     def get_current_turn(self) -> Optional[Player]:
         """
@@ -522,17 +685,19 @@ class GameManager:
     @property
     def current_deal(self) -> Optional[Deal]:
         """Get and store current deal in memory."""
-        if not self._current_deal:
-            self._current_deal = Deal.objects.filter(
+        try:
+            return Deal.objects.filter(
                 game=self.game,
-            ).last()
-        return self._current_deal
+            ).latest('created_at')
+        except Deal.DoesNotExist:
+            return None
 
     @property
     def current_trick(self) -> Optional[Trick]:
         """Get and store current trick in memory."""
-        if not self._current_trick:
-            self._current_trick = Trick.objects.filter(
+        try:
+            return Trick.objects.filter(
                 deal=self.current_deal,
             ).latest('created_at')
-        return self._current_trick
+        except Trick.DoesNotExist:
+            return None

@@ -19,4 +19,6 @@ class Deal(models.Model):
         related_name='deals',
     )
 
+    has_passed = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now=True)

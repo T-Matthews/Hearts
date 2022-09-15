@@ -11,6 +11,7 @@
     <div id="current-turn-token"></div>
 
     <div id="trick">
+        <div id="action-button"></div>
         <div id="trick-card-bottom"><div class="trick-card-placeholder"></div></div>
         <div id="trick-card-left"><div class="trick-card-placeholder"></div></div>
         <div id="trick-card-top"><div class="trick-card-placeholder"></div></div>
@@ -37,6 +38,8 @@
 
 <script type="application/javascript">
     const loader = document.getElementById('loader');
+    const actionButton = document.getElementById('action-button');
+    const currentTurnToken = document.getElementById('current-turn-token');
 
     const playerBottom = document.getElementById('player-bottom');
     const playerBottomHand = playerBottom.getElementsByClassName('hand')[0];
@@ -46,11 +49,13 @@
     const playerTopHand = playerTop.getElementsByClassName('hand')[0];
     const playerRight = document.getElementById('player-right');
     const playerRightHand = playerRight.getElementsByClassName('hand')[0];
-    const currentTurnToken = document.getElementById('current-turn-token');
 
-    /* Polling */
+    let playerCardIdsToPass = [];
+    let currentAction = null;
+
     const handleGameStateUpdate = (gameState) => {
-        const isObserver = gameState.is_observer;
+        // Update the action button if necessary.
+        handleActionUpdate(gameState.action);
 
         // Update Trick.
         Object.entries(gameState.trick).forEach(([trickPos, trickVal]) => {
@@ -64,71 +69,148 @@
 
         // Update player hand
         if (playerBottomHand.childNodes.length !== gameState.player_bottom.hand.length) {
-            playerBottomHand.innerHTML = gameState.player_bottom.hand.map((card) => {
-                return `<img data-id="${card.id}" class="player-card" src="{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg">`;
-            }).join('');
+            updatePlayerHand(gameState)
         }
-
         // Update opponent hands
         if (playerLeftHand.childNodes.length !== gameState.player_left.hand.length) {
-            playerLeftHand.innerHTML = gameState.player_left.hand.map((card) => {
-                let src = "{% get_static_prefix %}hearts/cards/card-back.svg"
-                if (isObserver) {
-                    src = `"{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg"`
-                }
-                    return `<img class="opposing-player-card" src=${src}>`
-            }).join('');
+            updateOpponentHand('left', gameState);
         }
         if (playerTopHand.childNodes.length !== gameState.player_top.hand.length) {
-            playerTopHand.innerHTML = gameState.player_top.hand.map((card) => {
-                let src = "{% get_static_prefix %}hearts/cards/card-back.svg"
-                if (isObserver) {
-                    src = `"{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg"`
-                }
-                    return `<img class="opposing-player-card" src=${src}>`
-            }).join('');
+            updateOpponentHand('top', gameState);
         }
         if (playerRightHand.childNodes.length !== gameState.player_right.hand.length) {
-            playerRightHand.innerHTML = gameState.player_right.hand.map((card) => {
-                let src = "{% get_static_prefix %}hearts/cards/card-back.svg"
-                if (isObserver) {
-                    src = `"{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg"`
-                }
-                    return `<img class="opposing-player-card" src=${src}>`
-            }).join('');
+            updateOpponentHand('right', gameState);
         }
 
         if (!currentTurnToken.classList.contains(gameState.current_turn_relative_position)) {
             currentTurnToken.classList.remove(...currentTurnToken.classList);
             currentTurnToken.classList.add(gameState.current_turn_relative_position);
         }
-
-        postGameStateUpdate();
     };
 
-    const postGameStateUpdate = () => {
+    const handleActionUpdate = (newAction) => {
+        // Return early if action hasn't changed.
+        if (currentAction === newAction) return;
+        currentAction = newAction;
+
+        // No Action
+        if (!currentAction || currentAction === 'play-card') {
+            actionButton.classList.add('hide');
+            actionButton.innerHTML = null;
+
+        // Deal
+        } else if (currentAction === 'deal-cards') {
+            actionButton.classList.remove('hide');
+            actionButton.innerHTML = 'deal';
+
+        // Pass
+        } else if (currentAction === 'pass-cards') {
+            actionButton.classList.remove('hide');
+            actionButton.innerHTML = 'pass';
+        }
+    }
+
+    const updatePlayerHand = (gameState) => {
+        playerBottomHand.innerHTML = gameState.player_bottom.hand.map((card) => {
+            return `<img data-id="${card.id}" class="player-card" src="{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg">`;
+        }).join('');
+
         const playerCards = document.querySelectorAll('img.player-card');
         playerCards.forEach((card) => {
             card.onclick = () => {
-                let cardId = card.getAttribute('data-id');
-                fetch('/game/{{ game_id }}/', {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action_type: 'play-card',
-                        card_id: cardId,
-                    }),
-                }).then(() => {
-                    updateGameState()
-                })
+                let dataId = card.getAttribute('data-id');
+                if (gameState.has_passed) {
+                    callAction('play-card', {card_id: dataId}, updateGameState)
+                } else {
+                    if (card.classList.contains('card-to-pass')) {
+                        card.classList.remove('card-to-pass');
+                        playerCardIdsToPass = playerCardIdsToPass.filter((cardId) => cardId !== dataId)
+                    } else {
+                        card.classList.add('card-to-pass');
+                        playerCardIdsToPass.push(dataId);
+                    }
+                }
             }
         })
     };
 
-    const updateGameState = () => {
+    const updateOpponentHand = (position, gameState) => {
+        let playerState;
+        let playerHand;
+        switch(position) {
+            case 'left':
+                playerState = gameState.player_left;
+                playerHand = playerLeftHand;
+                break;
+            case 'top':
+                playerState = gameState.player_top;
+                playerHand = playerTopHand;
+                break;
+            case 'right':
+                playerState = gameState.player_right;
+                playerHand = playerRightHand;
+                break;
+        }
+
+        playerHand.innerHTML = playerState.hand.map((card) => {
+            let src = "{% get_static_prefix %}hearts/cards/card-back.svg"
+            if (gameState.is_observer) {
+                src = `"{% get_static_prefix %}hearts/cards/${card.value}${card.suit.toUpperCase()}.svg"`
+            }
+            return `<img class="opposing-player-card" src=${src}>`
+        }).join('');
+    };
+
+    const callAction = (action, requestData, callback) => {
+        fetch('/game/{{ game_id }}/', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action_type: action,
+                ...requestData,
+            }),
+        }).then(() => {
+            callback()
+        })
+    }
+
+    // Set the click behaviour of the action button. This will drive the game forward.
+    actionButton.onclick = () => {
+        if (!currentAction) return;
+
+        let requestData = {};
+        let callback = updateGameState;
+        switch(currentAction) {
+            case 'deal-cards':
+                break;
+            case 'pass-cards':
+                if (playerCardIdsToPass.length !== 3) return;
+                requestData = {card_ids: playerCardIdsToPass};
+                callback = () => {
+                    getGameState((gameState) => {
+                        updatePlayerHand(gameState)
+                        updateOpponentHand('left', gameState)
+                        updateOpponentHand('top', gameState)
+                        updateOpponentHand('right', gameState)
+                    });
+                }
+                playerCardIdsToPass = []
+                break;
+            case 'play-cards':
+                return;
+            default:
+                return;
+        }
+
+        callAction(currentAction, requestData, callback);
+    }
+
+    const updateGameState = () => getGameState(handleGameStateUpdate);
+
+    const getGameState = (callback) => {
         loader.classList.remove('hide');
         fetch('/game/{{ game_id }}/state', {
             method: 'GET',
@@ -139,7 +221,8 @@
         }).then((response) => {
             return response.json()
         }).then((data) => {
-            handleGameStateUpdate(data);
+            callback(data);
+        }).then(() => {
             window.setTimeout(() => {
                 loader.classList.add('hide');
             }, 300);
