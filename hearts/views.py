@@ -127,12 +127,6 @@ class GameTemplateView(TemplateView):
 
     def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         game = Game.objects.get(id=kwargs['game_id'])
-        game_manager = GameManager(game)
-        if not Deal.objects.filter(game=game).exists():
-            game_manager.new_deal()
-            game_manager.new_trick()
-        game_manager.play_trick()
-
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs) -> dict:
@@ -144,13 +138,29 @@ class GameTemplateView(TemplateView):
         request_data = json.loads(request.body)
 
         game = Game.objects.get(id=kwargs['game_id'])
-        card = Card.objects.get(
-            id=request_data['card_id'],
-            player=request.player,
-        )
         game_manager = GameManager(game)
-        game_manager.play_card(card)
-        game_manager.play_trick()
+
+        action_type = request_data['action_type']
+        match action_type:
+            case 'deal-cards':
+                game_manager.new_deal()
+                game_manager.new_trick()
+            case 'pass-cards':
+                cards = list(Card.objects.filter(
+                    id__in=request_data['card_ids'],
+                    player=request.player,
+                ))
+                game_manager.set_cards_to_pass(cards)
+            case 'play-card':
+                card = Card.objects.get(
+                    id=request_data['card_id'],
+                    player=request.player,
+                )
+                game_manager.play_card(card)
+            case _:
+                return HttpResponse(status=400)
+
+        game_manager.play()
         return HttpResponse(status=204)
 
 

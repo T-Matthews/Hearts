@@ -47,6 +47,8 @@ class Card(models.Model):
 
     value = models.IntegerField()
 
+    to_pass = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now=True)
 
     @property
