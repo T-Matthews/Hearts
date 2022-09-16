@@ -3,6 +3,7 @@ import random
 import time
 from typing import Optional
 
+from hearts.bots.utils import get_bot_from_strategy
 from hearts.models import Card, Deal, Game, Player, Trick
 
 logger = logging.getLogger('django')
@@ -103,7 +104,7 @@ class GameManager:
                 return
 
             # Make the bot play their turn.
-            card = self.get_bot_card_to_play(bot=current_turn_player)
+            card = self.get_bot_card_to_play(current_turn_player)
             logger.info('Playing bot card')
             self.play_card(card)
 
@@ -142,57 +143,6 @@ class GameManager:
             self._current_deal = self.new_deal()
             self._current_trick = self.new_trick()
             self.play()
-
-    def get_bot_card_to_play(self, bot: Player) -> Card:
-        """
-        Determine what card a bot should play next.
-
-        This is a VERY primitive bot that is basically just able to mostly
-        follow the rules of the game. There is no strategy to this bot other
-        than it will play the lowest card it can when following suit.
-
-        This method is just a placeholder until we can implement a more
-        robust API layer to interface with more complex bots.
-
-        Args:
-            bot (Player): Bot Player object to find a card for.
-
-        Returns:
-            Card object to be played.
-        """
-        eligible_cards = Card.objects.filter(
-            player=bot,
-            deal=self.current_deal,
-            trick__isnull=True,
-        ).order_by('value')
-
-        # Fetch the bots unplayed cards and sort them lowe to high value.
-        eligible_cards = sorted(
-            eligible_cards,
-            key=lambda x: x.value if x.value > 1 else 99
-        )
-
-        first_card_of_trick = self.current_trick.first_card
-
-        # If the bot has a card in the correct suit, play the lowest one.
-        if first_card_of_trick:
-            cards_in_suit = [
-                c for c in eligible_cards
-                if c.suit == first_card_of_trick.suit
-            ]
-            if cards_in_suit:
-                return cards_in_suit[0]
-
-        # If the bot has the two of clubs, they should play it.
-        two_of_clubs = next((
-            c for c in eligible_cards
-            if c.suit == Card.Suit.CLUBS and c.value == 2
-        ), None)
-        if two_of_clubs:
-            return two_of_clubs
-
-        # Else just pick a card at random.
-        return random.choice(eligible_cards)
 
     def set_cards_to_pass(self, cards: list[Card]) -> None:
         """
@@ -250,14 +200,9 @@ class GameManager:
                 if not player.bot:
                     logger.info(f'Waiting for player {self.game.get_player_index(player.id)} to pass')
                     return
-                cards = list(Card.objects.filter(
-                    player=player,
-                    deal=deal,
-                    to_pass=False,
-                ).order_by('?')[:3])
-                for card in cards:
-                    card.to_pass = True
-                    card.save()
+
+                cards = self.get_bot_cards_to_pass(player)
+                self.set_cards_to_pass(cards)
 
         pass_map = {
             self.game.player_1_id: {
@@ -681,6 +626,18 @@ class GameManager:
                 for j in [(n + i - 1) % 4 + 1 for n in range(1, 5)]:
                     if j not in players_played:
                         return getattr(self.game, f'player_{j}')
+
+    def get_bot_cards_to_pass(self, player: Player) -> list[Card]:
+        """Interface with bot to determine cards to pass."""
+        BotImplementation = get_bot_from_strategy(player.bot_strategy)
+        bot = BotImplementation(player, self.game)
+        return bot.get_cards_to_pass()
+
+    def get_bot_card_to_play(self, player: Player) -> Card:
+        """Interface with bot to determine card to play."""
+        BotImplementation = get_bot_from_strategy(player.bot_strategy)
+        bot = BotImplementation(player, self.game)
+        return bot.get_card_to_play()
 
     @property
     def current_deal(self) -> Optional[Deal]:
