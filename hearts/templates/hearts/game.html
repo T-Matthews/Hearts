@@ -8,6 +8,8 @@
 
 <div id="game-area">
 
+    <div id="leave-game">Leave</div>
+
     <div id="current-turn-token"></div>
 
     <div id="trick">
@@ -40,6 +42,7 @@
     const loader = document.getElementById('loader');
     const actionButton = document.getElementById('action-button');
     const currentTurnToken = document.getElementById('current-turn-token');
+    const leaveGameButton = document.getElementById('leave-game');
 
     const playerBottom = document.getElementById('player-bottom');
     const playerBottomHand = playerBottom.getElementsByClassName('hand')[0];
@@ -188,7 +191,9 @@
                 ...requestData,
             }),
         }).then(() => {
-            callback()
+            if (callback) {
+                callback();
+            }
         })
     }
 
@@ -221,6 +226,12 @@
         }
 
         callAction(currentAction, requestData, callback);
+    }
+
+    leaveGameButton.onclick = () => {
+        callAction('leave-game', {}, () => {
+            window.location.href = '/';
+        });
     }
 
     const updateGameState = () => getGameState(handleGameStateUpdate);

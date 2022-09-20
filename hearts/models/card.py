@@ -63,3 +63,12 @@ class Card(models.Model):
         if self.value == 1:
             sort_key += 13
         return sort_key
+
+    @property
+    def score(self) -> int:
+        if self.suit == self.Suit.SPADES and self.value == 12:
+            return 13
+        elif self.suit == self.Suit.HEARTS:
+            return 1
+        else:
+            return 0
