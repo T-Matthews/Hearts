@@ -57,6 +57,80 @@ class GameManager:
 
         return game
 
+    def join(self, player: Player) -> None:
+        """
+        Join a game in progress.
+
+        If a user tries to join a game, either from the game browser or
+        otherwise, the user will take over a bot's seat if possible. If there
+        is a bot to take over, then we transfer all of the current and past
+        cards to the new user.
+        """
+        if player not in self.game.players:
+            for i in range(1, 5):
+                if (bot_player := getattr(self.game, f'player_{i}')).bot:
+                    # Update Game.
+                    setattr(self.game, f'player_{i}', player)
+                    self.game.save()
+
+                    # Update Tricks.
+                    Trick.objects.filter(
+                        deal__game=self.game,
+                        winning_player=bot_player,
+                    ).update(
+                        winning_player=player,
+                    )
+
+                    # Update Cards.
+                    Card.objects.filter(
+                        deal__game=self.game,
+                        player=bot_player,
+                    ).update(
+                        player=player,
+                    )
+                    logger.info('Joined game. Took over from bot')
+                    return
+            logger.info('No empty spots in game')
+        else:
+            logger.info('Player already in game')
+
+    def leave(self, player: Player) -> None:
+        """
+        The inverse of joining a game.
+
+        Have a bot take over for a player leaving the game.
+        """
+        if player in self.game.players:
+            bot = Player.objects.filter(
+                bot=True,
+            ).exclude(
+                id__in=[p.id for p in self.game.players],
+            ).last()
+            if bot is None:
+                logger.info('Could not find bot to take over')
+                return
+
+            player_index = self.game.get_player_index(player.id)
+            setattr(self.game, f'player_{player_index}', bot)
+            self.game.save()
+
+            # Update Tricks.
+            Trick.objects.filter(
+                deal__game=self.game,
+                winning_player=player,
+            ).update(
+                winning_player=bot,
+            )
+
+            # Update Cards.
+            Card.objects.filter(
+                deal__game=self.game,
+                player=player,
+            ).update(
+                player=bot,
+            )
+            logger.info('Left game. Bot taking over')
+
     def play(self) -> None:
         """
         Play through a trick, stopping for player input.
@@ -73,6 +147,10 @@ class GameManager:
         really buggy though and something freezes up at that point. Need to
         investigate.
         """
+        if self.game.winning_player is not None:
+            logger.info('Skipping playing game: Game already over')
+            return
+
         logger.info('Starting game play')
         # If the pass has not happened yet, try to trigger it. Else return
         # and wait for human players to pass cards
@@ -139,6 +217,17 @@ class GameManager:
         # doesn't work as expected and sometimes freezes here. Need to dig
         # further to figure out what is happening.
         else:
+            player_scores = sorted([
+                (p, sum(c.score for c in Card.objects.filter(deal__game=self.game, player=p, trick__isnull=False)))
+                for p in self.game.players
+            ], key=lambda x: x[1])
+            if player_scores[-1][1] >= 100:
+                winner, score = player_scores[0]
+                self.game.winning_player = winner
+                self.game.save()
+                logger.info(f'Game over: Player {self.game.get_player_index(winner.id)} wins with a score of {score}')
+                return
+
             logger.info('Deal over, starting next deal')
             self._current_deal = self.new_deal()
             self._current_trick = self.new_trick()
@@ -158,6 +247,7 @@ class GameManager:
         """
         # Validate the current deal hasn't passed yet.
         if self.current_deal.has_passed:
+            logger.info('Skipping passing: Already passed this deal')
             return
 
         # Check if passing is necessary. On every 4th round we skip passing.
@@ -165,15 +255,19 @@ class GameManager:
         if direction is None:
             self.current_deal.has_passed = True
             self.current_deal.save()
+            logger.info('Skipping passing: No passing this deal')
             return
 
         # Validate the correct number of cards are getting passed.
         if len(cards) != 3:
+            logger.info(f'Skipping passing: {len(cards)} given; expected 3')
             return
 
         for card in cards:
             card.to_pass = True
             card.save()
+
+        logger.info(f'Player {self.game.get_player_index(cards[0].player_id)} set 3 cards to pass')
 
     def pass_cards(self) -> None:
         """
@@ -446,12 +540,11 @@ class GameManager:
             game_state['has_passed'] = None
 
         # Determine the players absolute and relative positions.
-        players = self.game.players
-        player_index = players.index(player)
+        player_index = self.game.get_player_index(player.id)
         player_positions = ['bottom', 'left', 'top', 'right']
         player_position_map = {
-            (index - player_index) % 4 + 1: player_positions[index]
-            for index in range(4)
+            index: player_positions[(index + (4 - player_index)) % 4]
+            for index in range(1, 5)
         }
 
         # Get the suit of the first card played in the suit if applicable.
