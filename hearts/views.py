@@ -1,6 +1,7 @@
 import json
 import random
 import time
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from django.http import (
@@ -83,11 +84,44 @@ class GameBrowserTemplateView(TemplateView):
         now this is some test data to test the templates.
         """
         context = super().get_context_data(**kwargs)
+
+        games = Game.objects.select_related(
+            'player_1',
+            'player_2',
+            'player_3',
+            'player_4',
+        ).filter(
+            winning_player__isnull=True,
+        ).order_by('-created_at')
+
+        my_games_to_display = []
+        other_games_to_display = []
+        for game in games:
+            minutes_elapsed = (datetime.now(timezone.utc) - game.created_at).seconds // 60
+            if minutes_elapsed <= 1:
+                time_elapsed = '<1 minute'
+            elif (hours_elapsed := minutes_elapsed // 60) > 0:
+                if hours_elapsed == 1:
+                    time_elapsed = f'{hours_elapsed} hour'
+                else:
+                    time_elapsed = f'{hours_elapsed} hours'
+            else:
+                time_elapsed = f'{minutes_elapsed} minutes'
+
+            game_info = {
+                'id': str(game.id),
+                'seats': f'{len([p for p in game.players if p.bot])} / 4',
+                'deal': Deal.objects.filter(game=game).count(),
+                'time_elapsed': time_elapsed,
+            }
+            if self.request.player in game.players:
+                my_games_to_display.append(game_info)
+            else:
+                other_games_to_display.append(game_info)
+
         context.update({
-            'games': [
-                {'id': str(uuid4())[:-8], 'seats': '1 / 4', 'deal': 3, 'time_elapsed': '<1 min'},
-                {'id': str(uuid4())[:-8], 'seats': 'FULL', 'deal': 1, 'time_elapsed': '17 min'},
-            ]
+            'my_games': my_games_to_display[:6],
+            'other_games': other_games_to_display[:6],
         })
         return context
 
@@ -126,7 +160,9 @@ class GameTemplateView(TemplateView):
     template_name = 'hearts/game.html'
 
     def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        """Join a game in progress."""
         game = Game.objects.get(id=kwargs['game_id'])
+        GameManager(game).join(request.player)
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs) -> dict:
@@ -157,6 +193,9 @@ class GameTemplateView(TemplateView):
                     player=request.player,
                 )
                 game_manager.play_card(card)
+            case 'leave-game':
+                game_manager.leave(request.player)
+                return HttpResponse(status=200)
             case _:
                 return HttpResponse(status=400)
 

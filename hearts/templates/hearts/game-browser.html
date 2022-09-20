@@ -2,16 +2,17 @@
 
 {% block content %}
 
-{% if games %}
-    <table id="game-browser">
-        <tr>
-            <th></th>
-            <th>Game ID</th>
-            <th>Seats</th>
-            <th>Deal</th>
-            <th>Time Elapsed</th>
-        </tr>
-        {% for game in games %}
+<table id="game-browser">
+    <tr>
+        <th></th>
+        <th>Game ID</th>
+        <th>Seats</th>
+        <th>Deal</th>
+        <th>Time Elapsed</th>
+    </tr>
+    {% if my_games %}
+        <tr><td colspan="5">My Games</td></tr>
+        {% for game in my_games %}
             <tr>
                 <td><a class="join-game" href="/game/{{ game.id }}/">JOIN</a></td>
                 <td>{{ game.id }}</td>
@@ -20,9 +21,18 @@
                 <td>{{ game.time_elapsed }}</td>
             </tr>
         {% endfor %}
-    </table>
-{% else %}
-    <p>No games are available.</p>
-{% endif %}
+        <tr><td colspan="5">Other Games</td></tr>
+    {% endif %}
+
+    {% for game in other_games %}
+        <tr>
+            <td><a class="join-game" href="/game/{{ game.id }}/">JOIN</a></td>
+            <td>{{ game.id }}</td>
+            <td>{{ game.seats }}</td>
+            <td>{{ game.deal }}</td>
+            <td>{{ game.time_elapsed }}</td>
+        </tr>
+    {% endfor %}
+</table>
 
 {% endblock %}

@@ -427,3 +427,21 @@ div[id^="trick-card-"] img {
 #action-button.hide {
     display: none;
 }
+
+/* Leave Game Button */
+#leave-game {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 10px 20px;
+    margin: 5px;
+    background: red;
+    border-radius: 5px;
+    color: white;
+    opacity: 0.3;
+    cursor: pointer;
+    transition: 0.2s;
+}
+#leave-game:hover {
+    opacity: 0.5;
+}
