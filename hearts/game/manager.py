@@ -3,6 +3,9 @@ import random
 import time
 from typing import Optional
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 from hearts.bots.utils import get_bot_from_strategy
 from hearts.models import Card, Deal, Game, Player, Trick
 
@@ -81,6 +84,7 @@ class GameManager:
             if not self.current_deal.has_passed:
                 logger.info('Exiting play, waiting for pass')
                 return
+        self.send_game_state_to_client()
 
         trick = self.current_trick
 
@@ -107,6 +111,7 @@ class GameManager:
             card = self.get_bot_card_to_play(current_turn_player)
             logger.info('Playing bot card')
             self.play_card(card)
+            self.send_game_state_to_client()
 
         # At this point the trick has just had the fourth card played.
         # We determine the winner of the trick by finding the highest value
@@ -127,6 +132,7 @@ class GameManager:
         # Sleep for a second to give the human players a chance to see how the
         # trick played out.
         time.sleep(1)
+        self.send_game_state_to_client()
 
         # If this was not the last trick in the game then create a new trick
         # and restart this entire method.
@@ -143,6 +149,7 @@ class GameManager:
             self._current_deal = self.new_deal()
             self._current_trick = self.new_trick()
             self.play()
+        self.send_game_state_to_client()
 
     def set_cards_to_pass(self, cards: list[Card]) -> None:
         """
@@ -298,7 +305,7 @@ class GameManager:
         logger.info(f'Player {self.game.get_player_index(card.player_id)} plays card {card.value}{card.suit}')
 
         # Sleep for a bit otherwise the bots move too fast.
-        time.sleep(0.6)
+        time.sleep(0.2)
 
     def is_valid_move(self, card: Card) -> bool:
         """
@@ -425,6 +432,7 @@ class GameManager:
         # Initialize state with static values.
         game_state = {
             'game_id': str(self.game.id),
+            'player_id': str(player.id),
             'trick': {},
             'current_turn_relative_position': None,
             'is_observer': is_observer,
@@ -658,3 +666,17 @@ class GameManager:
             ).latest('created_at')
         except Trick.DoesNotExist:
             return None
+
+    def send_game_state_to_client(self) -> None:
+        """Send the game state to all players via websockets."""
+        group = f'game_{self.game.id}'
+        channel_layer = get_channel_layer()
+        for player in self.game.players:
+            game_state = self.get_game_state(player)
+            async_to_sync(channel_layer.group_send)(
+                group,
+                {
+                    'type': 'send_payload',
+                    'payload': game_state,
+                },
+            )

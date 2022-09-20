@@ -53,7 +53,22 @@
     let playerCardIdsToPass = [];
     let currentAction = null;
 
+    // Very ugly JS to convert cookie string into an object.
+    const cookies = document.cookie.split(';').filter(
+        (c) => c && c.includes('=')
+    ).map(
+        (c) => c.split('=').map((v) => v.trim())
+    ).reduce(
+        (r, v) => ({...r, [v[0]]: v[1]}),
+        {},
+    );
+    const cookiePlayerId = cookies['hearts_player_id']
+
     const handleGameStateUpdate = (gameState) => {
+        // Temporary check to prevent updating game state if received update from other player's perspective. This
+        // check can go away once we get a little smarter with sockets.
+        if (gameState.player_id != cookiePlayerId) return;
+
         // Update the action button if necessary.
         handleActionUpdate(gameState.action);
 
@@ -232,10 +247,20 @@
     // Update the game state on page load.
     updateGameState();
 
-    // Setup live updates via SSE. Fallback to polling.
-    if (typeof(EventSource) !== "undefined") {
-        const source = new EventSource('/game/{{ game_id }}/state/stream/');
-        source.onmessage = (event) => {
+    // Setup live updates. Try WS, fallback to SSE, fallback further to polling.
+    if (typeof(WebSocket) !== 'undefined') {
+        const ws = new WebSocket(`ws://${window.location.host}/game/{{ game_id }}/socket/`)
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data)
+            console.log('Received WS');
+            handleGameStateUpdate(data)
+        }
+        ws.onclose = () => {
+            console.error('Socket closed');
+        }
+    } else if (typeof(EventSource) !== 'undefined') {
+        const sse = new EventSource('/game/{{ game_id }}/state/stream/');
+        sse.onmessage = (event) => {
             console.log('Received SSE for game state');
             handleGameStateUpdate(JSON.parse(event.data));
         };
