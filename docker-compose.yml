@@ -9,6 +9,7 @@ services:
       - .:/app
     depends_on:
       - postgres14
+      - redis7
 
   postgres14:
     image: postgres:14-alpine
@@ -18,6 +19,9 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=defaultdb
+
+  redis7:
+    image: redis:7-alpine
 
 volumes:
   postgres14data:

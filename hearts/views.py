@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from asgiref.sync import sync_to_async
 from django.http import (
     HttpRequest,
     HttpResponse,
@@ -200,6 +201,7 @@ class GameTemplateView(TemplateView):
                 return HttpResponse(status=400)
 
         game_manager.play()
+        game_manager.send_game_state_to_client()
         return HttpResponse(status=204)
 
 
@@ -238,6 +240,6 @@ def stream_game_state(request, *args, **kwargs):
             yield 'data: %s\n\n' % json.dumps(game_state)
 
     return StreamingHttpResponse(
-        game_state_stream(),
+        sync_to_async(game_state_stream)(),
         content_type='text/event-stream'
     )

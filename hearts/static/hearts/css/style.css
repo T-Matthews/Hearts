@@ -377,7 +377,7 @@ div[id^="trick-card-"] img {
     left: 0;
     transform: translateY(-50%);
     opacity: 1;
-    width: 50px;
+    width: 30px;
     border-radius: 0 30px 30px 0;
 }
 #current-turn-token.top {
