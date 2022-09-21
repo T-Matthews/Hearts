@@ -15,17 +15,22 @@ class GameConsumer(AsyncWebsocketConsumer):
 
         This method runs when a connection is requested from the front end.
         """
-        # Get the player id and store it in memory. Not doing anything with it
-        # yet.
-        self.player_id = self.scope['cookies']['hearts_player_id']
-
         # Use the game id to create a dynamic channel layer group.
         self.game_id = self.scope['url_route']['kwargs']['game_id']
         self.game_group_name = f'game_{self.game_id}'
 
-        # Add this connection to the channel layer group for this game.
+        self.player_id = self.scope['cookies']['hearts_player_id']
+        self.player_group_name = f'game_{self.game_id}_player_{self.player_id}'
+
+        # Add this connection to the channel layer groups.
+        # Game specific group.
         await self.channel_layer.group_add(
             self.game_group_name,
+            self.channel_name,
+        )
+        # Player specific group.
+        await self.channel_layer.group_add(
+            self.player_group_name,
             self.channel_name,
         )
 
@@ -38,9 +43,13 @@ class GameConsumer(AsyncWebsocketConsumer):
         This is just a callback and is not necessary to handle. Use for any
         kind of clean up.
         """
-        # Remove connection from game group.
+        # Remove connection from groups.
         await self.channel_layer.group_discard(
             self.game_group_name,
+            self.channel_name,
+        )
+        await self.channel_layer.group_discard(
+            self.player_group_name,
             self.channel_name,
         )
 
@@ -60,8 +69,4 @@ class GameConsumer(AsyncWebsocketConsumer):
 
         This method is currently used to send the game state to the front end.
         """
-        await self.send(
-            text_data=json.dumps(
-                event['payload'],
-            )
-        )
+        await self.send(text_data=json.dumps(event))

@@ -445,3 +445,25 @@ div[id^="trick-card-"] img {
 #leave-game:hover {
     opacity: 0.5;
 }
+
+/* Notifications */
+#player-notifications {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 300px;
+}
+.player-notification {
+    position: absolute;
+    transition: 1s;
+    opacity: 0;
+    transform: translateX(-50%) translateY(-50%);
+    color: white;
+    padding: 3px 5px;
+    background: transparent;
+}
+.player-notification.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(600%);
+    background: rgba(0, 0, 0, 0.8);
+}
