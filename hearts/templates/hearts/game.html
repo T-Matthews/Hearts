@@ -35,7 +35,25 @@
     <div id="player-bottom">
         <div class="hand"></div>
     </div>
-
+    <div id="scoreboard">
+        
+        <div id="name1" class="score-grid score-grid-l score-grid-top">
+            
+        </div>
+        <div id="name2" class="score-grid score-grid-l score-grid-mid">
+        
+        </div>
+        <div id="name3" class="score-grid score-grid-l score-grid-mid">
+         
+        </div>
+        <div id="name4" class="score-grid score-grid-l score-grid-bot">
+          
+        </div>
+        <div class="score1 score-grid score-grid-r score-grid-top">0</div>
+        <div class="score2 score-grid score-grid-r score-grid-mid">0</div>
+        <div class="score3 score-grid score-grid-r score-grid-mid">0</div>
+        <div class="score4 score-grid score-grid-r score-grid-bot">0</div>
+      </div>
 </div>
 
 <script type="application/javascript">
@@ -52,6 +70,11 @@
     const playerTopHand = playerTop.getElementsByClassName('hand')[0];
     const playerRight = document.getElementById('player-right');
     const playerRightHand = playerRight.getElementsByClassName('hand')[0];
+
+    const playerName1 = document.getElementById('name1')
+    const playerName2 = document.getElementById('name2')
+    const playerName3 = document.getElementById('name3')
+    const playerName4 = document.getElementById('name4')
 
     let playerCardIdsToPass = [];
     let currentAction = null;
@@ -104,6 +127,11 @@
             currentTurnToken.classList.remove(...currentTurnToken.classList);
             currentTurnToken.classList.add(gameState.current_turn_relative_position);
         }
+        playerName1.innerText = gameState.player_bottom.name;
+        playerName2.innerText = gameState.player_left.name;
+        playerName3.innerText = gameState.player_top.name;
+        playerName4.innerText = gameState.player_right.name;
+
     };
 
     const handleActionUpdate = (newAction) => {

@@ -201,6 +201,65 @@ body {box-sizing: border-box; font-family: sans-serif;}
     grid-row-gap: 10px;
 }
 
+/*Scoreboard*/
+#scoreboard{
+grid-column-start: 1;
+grid-column-end: 2;
+grid-row-start: 3;
+grid-row-end: 4;
+margin-bottom: 10px;
+border-radius: 3px;
+display: grid; 
+grid-auto-columns: 1fr; 
+grid-template-columns: 2fr 1fr; 
+grid-template-rows: 1fr 1fr 1fr 1fr; 
+gap: 0.1em 5px; 
+grid-template-areas: 
+  "name1 score1"
+  "name2 score2"
+  "name3 score3"
+  "name4 score4"; 
+width: 100%; }
+
+.name1 { grid-area: name1;}
+.name2 { grid-area: name2;}
+.name3 { grid-area: name3;}
+.name4 { grid-area: name4;}
+
+.score1 { grid-area: score1;}
+.score2 { grid-area: score2;}
+.score3 { grid-area: score3;}
+.score4 { grid-area: score4;}
+
+.score-grid{
+    background-color: rgb(36,63,53);
+    border-radius: 5px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+    
+}
+.score-grid-l{
+    margin-left: 0.35em;
+}
+.score-grid-r{
+    margin-right: 0.35em;
+}
+.score-grid-top{
+    margin-top: 0.5em;
+    margin-bottom:0.2em;
+}
+.score-grid-mid{
+    margin-top: 0.2em;
+    margin-bottom:0.2em;
+}
+.score-grid-bot{
+    margin-top: 0.2em;
+    margin-bottom:0.5em;
+
+}
 /* Center Trick Display */
 
 #trick {

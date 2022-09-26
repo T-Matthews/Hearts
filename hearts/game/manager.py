@@ -520,6 +520,7 @@ class GameManager:
                             value (str): Value of card.
                         }
                     ]
+                    name: name defined by player/user
                 }
             }
         """
@@ -583,6 +584,9 @@ class GameManager:
                     for card in cards
                 ]
 
+
+            #Implement score
+
             # Update the top-level current turn value if it's this players turn.
             is_turn = current_player == current_turn
             if is_turn:
@@ -595,7 +599,12 @@ class GameManager:
                 'absolute_position': absolute_pos,
                 'is_turn': is_turn,
                 'hand': hand,
+                'name': current_player.name,
             }
+
+
+
+
 
             # Lastly, update the trick with this player's card if they've
             # played on this trick already.
