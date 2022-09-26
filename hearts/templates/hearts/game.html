@@ -12,6 +12,8 @@
 
     <div id="current-turn-token"></div>
 
+    <div id="player-notifications"></div>
+
     <div id="trick">
         <div id="action-button"></div>
         <div id="trick-card-bottom"><div class="trick-card-placeholder"></div></div>
@@ -42,6 +44,7 @@
     const loader = document.getElementById('loader');
     const actionButton = document.getElementById('action-button');
     const currentTurnToken = document.getElementById('current-turn-token');
+    const playerNotifications = document.getElementById('player-notifications');
     const leaveGameButton = document.getElementById('leave-game');
 
     const playerBottom = document.getElementById('player-bottom');
@@ -179,6 +182,7 @@
         }).join('');
     };
 
+    // Function to send an action to the backed.
     const callAction = (action, requestData, callback) => {
         fetch('/game/{{ game_id }}/', {
             method: 'POST',
@@ -228,14 +232,7 @@
         callAction(currentAction, requestData, callback);
     }
 
-    leaveGameButton.onclick = () => {
-        callAction('leave-game', {}, () => {
-            window.location.href = '/';
-        });
-    }
-
-    const updateGameState = () => getGameState(handleGameStateUpdate);
-
+    // Fetch the state of the game from the logged in players perspective.
     const getGameState = (callback) => {
         loader.classList.remove('hide');
         fetch('/game/{{ game_id }}/state', {
@@ -255,20 +252,78 @@
         });
     }
 
+    // Load and handle game game state.
+    const updateGameState = () => getGameState(handleGameStateUpdate);
+
     // Update the game state on page load.
     updateGameState();
 
-    // Setup live updates. Try WS, fallback to SSE, fallback further to polling.
-    if (typeof(WebSocket) !== 'undefined') {
-        const ws = new WebSocket(`ws://${window.location.host}/game/{{ game_id }}/socket/`)
+    /*********************/
+    /* Leave Game Button */
+    /*********************/
+    leaveGameButton.onclick = () => {
+        callAction('leave-game', {}, () => {
+            window.location.href = '/';
+        });
+    }
+
+    /*****************/
+    /* Notifications */
+    /*****************/
+    const handleNotification = (notification) => {
+        const notificationNode = document.createElement('div');
+        notificationNode.innerText = notification.text;
+        notificationNode.classList.add('player-notification');
+        playerNotifications.appendChild(notificationNode);
+        window.setTimeout(() => {
+            notificationNode.classList.add('show');
+        }, 10);
+        window.setTimeout(() => {
+            playerNotifications.removeChild(notificationNode);
+        }, 2000);
+    }
+
+    /**************/
+    /* WebSockets */
+    /**************/
+    const connectToWebSocket = () => {
+        const ws = new WebSocket(`ws://${window.location.host}/game/{{ game_id }}/socket/`);
+        // Handle incoming ws messages. Route to appropriate handles.
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data)
-            console.log('Received WS');
-            handleGameStateUpdate(data)
-        }
+            const data = JSON.parse(event.data);
+            console.log('Received WS', data.action);
+            switch (data.action) {
+                case 'update-game-state':
+                    handleGameStateUpdate(data.payload);
+                    break;
+                case 'notify-user':
+                    handleNotification(data.payload);
+                    break;
+                default:
+                    console.error('Unknown websocket action received', data.action)
+                    break;
+            }
+        };
+
+        // Handle closed connection. Try to reconnect after some time;
         ws.onclose = () => {
-            console.error('Socket closed');
-        }
+            console.error('Socket closed. Attempting to reconnect');
+            window.setTimeout(connectToWebSocket, 1000);
+        };
+
+        // Handle connection error. Close and try again.
+        ws.onerror = (error) => {
+            console.error('Socket error', error);
+            ws.close();
+        };
+    };
+
+    /*********************************************************/
+    /* Live updating UI                                      */
+    /* Try WS, fallback to SSE, fallback further to polling. */
+    /*********************************************************/
+    if (typeof(WebSocket) !== 'undefined') {
+        connectToWebSocket();
     } else if (typeof(EventSource) !== 'undefined') {
         const sse = new EventSource('/game/{{ game_id }}/state/stream/');
         sse.onmessage = (event) => {
@@ -282,9 +337,6 @@
             updateGameState();
         }, 500);
     }
-
-    /* Play Cards */
-
 </script>
 
 {% endblock %}

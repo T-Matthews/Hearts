@@ -5,6 +5,7 @@ from typing import Optional
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.db.transaction import atomic
 
 from hearts.bots.utils import get_bot_from_strategy
 from hearts.models import Card, Deal, Game, Player, Trick
@@ -25,10 +26,12 @@ class GameManager:
     # The current trick in the deal.
     _current_trick: Optional[Trick] = None
 
+    @atomic
     def __init__(self, game: Game):
         """Initialize the game manager with a Game object."""
-        # Make the Game object accessible to instances of this class.
-        self.game = game
+        # Make the Game object accessible to instances of this class. Acquire
+        # lock on game object to prevent concurrent game updates.
+        self.game = Game.objects.select_for_update(nowait=True).get(id=game.id)
 
     @staticmethod
     def new_game(player: Player) -> Game:
@@ -183,6 +186,10 @@ class GameManager:
             # kick a human player off if inactive for too long.
             if not current_turn_player.bot:
                 logger.info('Awaiting human player card')
+                self.send_player_notification(
+                    player=current_turn_player,
+                    notification='Your up',
+                )
                 return
 
             # Make the bot play their turn.
@@ -206,6 +213,23 @@ class GameManager:
         trick.winning_player = winner
         trick.save()
         logger.info(f'Player {self.game.get_player_index(winner.id)} takes the trick')
+        for player in self.game.players:
+            if player == winner:
+                points = sum(c.score for c in Card.objects.filter(
+                    trick=trick,
+                ))
+                notification_text = 'You take the trick'
+                if points > 0:
+                    notification_text += f'. +{points} points'
+                self.send_player_notification(
+                    player=player,
+                    notification=notification_text,
+                )
+            else:
+                self.send_player_notification(
+                    player=player,
+                    notification=f'{winner.name} takes the trick',
+                )
 
         # Sleep for a second to give the human players a chance to see how the
         # trick played out.
@@ -224,7 +248,7 @@ class GameManager:
         # further to figure out what is happening.
         else:
             player_scores = sorted([
-                (p, sum(c.score for c in Card.objects.filter(deal__game=self.game, player=p, trick__isnull=False)))
+                (p, sum(c.score for c in Card.objects.filter(deal__game=self.game, trick__winning_player=p)))
                 for p in self.game.players
             ], key=lambda x: x[1])
             if player_scores[-1][1] >= 100:
@@ -232,12 +256,21 @@ class GameManager:
                 self.game.winning_player = winner
                 self.game.save()
                 logger.info(f'Game over: Player {self.game.get_player_index(winner.id)} wins with a score of {score}')
-                return
-
-            logger.info('Deal over, starting next deal')
-            self._current_deal = self.new_deal()
-            self._current_trick = self.new_trick()
-            self.play()
+                for player in self.game.players:
+                    notification_text = 'Game Over. '
+                    if player == winner:
+                        notification_text += 'You win!'
+                    else:
+                        notification_text += f'{winner.name} wins.'
+                    self.send_player_notification(
+                        player=player,
+                        notification=notification_text,
+                    )
+            else:
+                logger.info('Deal over, starting next deal')
+                self._current_deal = self.new_deal()
+                self._current_trick = self.new_trick()
+                self.play()
         self.send_game_state_to_client()
 
     def set_cards_to_pass(self, cards: list[Card]) -> None:
@@ -612,6 +645,9 @@ class GameManager:
                     }
                 game_state['trick'][relative_pos] = card
 
+        if self.game.winning_player:
+            game_state['trick'] = {}
+
         return game_state
 
     def new_deal(self) -> Deal:
@@ -760,16 +796,36 @@ class GameManager:
         except Trick.DoesNotExist:
             return None
 
+    def send_player_notification(
+            self,
+            player: Player,
+            notification: str,
+    ) -> None:
+        """Send a notification to a specific player in the game player."""
+        channel_layer = get_channel_layer()
+        group = f'game_{self.game.id}_player_{player.id}'
+        async_to_sync(channel_layer.group_send)(
+            group,
+            {
+                'type': 'send_payload',
+                'action': 'notify-user',
+                'payload': {
+                    'text': notification,
+                },
+            },
+        )
+
     def send_game_state_to_client(self) -> None:
         """Send the game state to all players via websockets."""
-        group = f'game_{self.game.id}'
         channel_layer = get_channel_layer()
         for player in self.game.players:
+            group = f'game_{self.game.id}_player_{player.id}'
             game_state = self.get_game_state(player)
             async_to_sync(channel_layer.group_send)(
                 group,
                 {
                     'type': 'send_payload',
+                    'action': 'update-game-state',
                     'payload': game_state,
                 },
             )
