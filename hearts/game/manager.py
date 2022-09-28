@@ -21,11 +21,6 @@ class GameManager:
     more meaningful pieces.
     """
 
-    # The current "deal" or round in the game.
-    _current_deal: Optional[Deal] = None
-    # The current trick in the deal.
-    _current_trick: Optional[Trick] = None
-
     @atomic
     def __init__(self, game: Game):
         """Initialize the game manager with a Game object."""
@@ -239,7 +234,7 @@ class GameManager:
         # If this was not the last trick in the game then create a new trick
         # and restart this entire method.
         if Trick.objects.filter(deal=self.current_deal).count() < 13:
-            self._current_trick = self.new_trick()
+            self.new_trick()
             self.play()
 
         # If the last trick just finished then the game is over and a new deal
@@ -268,8 +263,8 @@ class GameManager:
                     )
             else:
                 logger.info('Deal over, starting next deal')
-                self._current_deal = self.new_deal()
-                self._current_trick = self.new_trick()
+                self.new_deal()
+                self.new_trick()
                 self.play()
         self.send_game_state_to_client()
 
@@ -565,18 +560,21 @@ class GameManager:
             'is_observer': is_observer,
         }
 
+        current_deal = self.current_deal
+        current_trick = self.current_trick
+
         # Determine next action required by player.
-        if not self.current_deal:
+        if not current_deal:
             action = 'deal-cards'
-        elif not self.current_deal.has_passed:
+        elif not current_deal.has_passed:
             action = 'pass-cards'
         else:
             action = 'play-card'
         game_state['action'] = action
 
         # Check if passing has occurred already.
-        if self.current_deal:
-            game_state['has_passed'] = self.current_deal.has_passed
+        if current_deal:
+            game_state['has_passed'] = current_deal.has_passed
         else:
             game_state['has_passed'] = None
 
@@ -590,8 +588,8 @@ class GameManager:
 
         # Get the suit of the first card played in the suit if applicable.
         game_state['trick_suit'] = None
-        if self.current_trick and self.current_trick.first_card:
-            game_state['trick_suit'] = self.current_trick.first_card.suit
+        if current_trick and current_trick.first_card:
+            game_state['trick_suit'] = current_trick.first_card.suit
 
         current_turn = self.get_current_turn()
 
@@ -600,10 +598,10 @@ class GameManager:
             # Get the cards currently in the players hand.
             current_player = getattr(self.game, f'player_{absolute_pos}')
             hand = []
-            if self.current_deal:
+            if current_deal:
                 cards = Card.objects.filter(
                     player=current_player,
-                    deal=self.current_deal,
+                    deal=current_deal,
                     trick__isnull=True,
                 )
                 cards = sorted(list(cards), key=lambda x: x.sort_key)
@@ -632,9 +630,9 @@ class GameManager:
 
             # Lastly, update the trick with this player's card if they've
             # played on this trick already.
-            if self.current_trick:
+            if current_trick:
                 card_played = Card.objects.filter(
-                    trick=self.current_trick,
+                    trick=current_trick,
                     player=current_player,
                 ).last()
                 card = None
@@ -683,6 +681,7 @@ class GameManager:
         for index, card in enumerate(cards):
             card.player = players[index % len(players)]
             card.save()
+            self.send_game_state_to_client()
 
         logger.info('Shuffled and dealt')
         return deal
@@ -727,6 +726,9 @@ class GameManager:
         Returns:
             Player who should play next.
         """
+        if not self.current_deal or not self.current_deal.has_passed:
+            return None
+
         cards_played = Card.objects.filter(
             trick=self.current_trick,
         )
