@@ -12,6 +12,8 @@ class LowestBotTestCase(TestCase):
 
         This function runs before each test, creating a new game and players.
         """
+        super().setUp()
+
         # Set up a new game. First we need 4 players.
         self.bot = Player.objects.create(name='Test Bot', bot=True)
         self.human = Player.objects.create(name='Human player')
