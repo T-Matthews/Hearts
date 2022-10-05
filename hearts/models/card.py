@@ -72,3 +72,6 @@ class Card(models.Model):
             return 1
         else:
             return 0
+
+    def __str__(self) -> str:
+        return f'{self.suit.upper()}{self.value}'
